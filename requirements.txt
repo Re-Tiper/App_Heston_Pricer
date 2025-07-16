@@ -1,0 +1,5 @@
+streamlit
+numpy
+scipy.integrate
+seaborn
+matplotlib.pyplot
