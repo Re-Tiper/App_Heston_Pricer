@@ -19,7 +19,7 @@ st.markdown("""
         transition: background-color 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #45a049;  /* Darker green on hover */
+        background-color: #023535;  /* Darker green on hover */
     }
     </style>
 """, unsafe_allow_html=True)
