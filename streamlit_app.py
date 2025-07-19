@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from Heston_pricers import HestonFFT, HestonQuad, LSM_American
 from Heston_sim import HestonModelSim, PlotHestonModel
+from BS_vs_Heston import plot_Heston_vs_BSM
 
 
 # Inject custom CSS for buttons
@@ -19,7 +20,7 @@ st.markdown("""
         transition: background-color 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #023535;  /* Darker green on hover */
+        background-color: #023535;  
     }
     </style>
 """, unsafe_allow_html=True)
@@ -408,10 +409,10 @@ st.sidebar.caption(
 
 params = {
     "kappa": st.sidebar.slider(
-        "κ (mean reversion)", min_value=1e-5, max_value=2.0, value=0.5, step=0.01
+        "κ (mean reversion)", min_value=1e-5, max_value=5.0, value=2.0, step=0.01
     ),
     "theta": st.sidebar.slider(
-        "θ (long-term variance)", min_value=1e-5, max_value=0.4, value=0.04, step=0.001
+        "θ (long-term variance)", min_value=1e-5, max_value=0.4, value=0.04, step=0.01
     ),
     "sigma": st.sidebar.slider(
         "σ (vol of vol)", min_value=1e-5, max_value=1.0, value=0.3, step=0.01
@@ -420,22 +421,22 @@ params = {
         "ρ (correlation)", min_value=-0.99999, max_value=0.99999, value=0.5, step=0.01
     ),
     "v0": st.sidebar.slider(
-        "v₀ (initial variance)", min_value=1e-5, max_value=0.4, value=0.02, step=0.001
+        "v₀ (initial variance)", min_value=1e-5, max_value=0.4, value=0.02, step=0.01
     ),
     "r": st.sidebar.slider(
-        "r (risk-free rate)", min_value=0.0, max_value=0.2, value=0.03, step=0.001
+        "r (risk-free rate)", min_value=0.0, max_value=0.2, value=0.03, step=0.01
     ),
 }
 
 # --- Parameter Input Types and Ranges ---
 
 SLIDER_PARAMS = {
-    "kappa": (0.001, 2.0, 0.01, 0.5),
-    "theta": (0.001, 0.1, 0.001, 0.04),
-    "sigma": (0.001, 1.0, 0.01, 0.3),
+    "kappa": (1e-5, 5.0, 0.01, 2.0),
+    "theta": (1e-5, 0.1, 0.01, 0.04),
+    "sigma": (1e-5, 1.0, 0.01, 0.3),
     "rho": (-0.999, 0.999, 0.01, -0.5),
-    "v0": (0.001, 0.1, 0.001, 0.04),
-    "r": (0.0, 0.1, 0.001, 0.03),
+    "v0": (1e-5, 0.1, 0.01, 0.04),
+    "r": (0.0, 0.1, 0.01, 0.03),
 }
 
 NUMBER_INPUT_PARAMS = {
@@ -686,7 +687,173 @@ if generate_heatmap:
         st.pyplot(fig_put)
 
 
-# --- Main: Plot Price and Volatility ---
+# --- Main: Plot Option Price Difference ---
+st.header("Heston vs Black-Scholes")
+
+st.markdown(
+        """
+        <div style="background-color:#025E73; padding:15px; border-radius:10px; margin-top:-10px;">
+            <p style="font-size:18px; margin:0; color:#011F26;">
+                Plot the option (European) price difference from the Heston stochastic volatility model minus the Black-Scholes with a volatility that matches the 
+                the (square root of the) expected variance of the spot return over the life of the option. Except from the parameter choosen, all the other parameter values 
+                remain the same.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+st.markdown(" ")
+
+with st.expander("**📘 Matching Heston Variance to Black-Scholes Volatility**"):
+    st.markdown(r"""
+    # Matching Heston Variance to Black-Scholes Volatility
+
+    To compare the Heston model to the Black-Scholes model fairly, we match the **total variance** over the life of the option. \\
+    In the Black-Scholes model, the volatility $\sigma_{\text{BSM}}$ is constant and hence, the variance of log-returns over time $ T $ is simply:
+    
+    $$
+    \text{Var}_{\text{BSM}} = \sigma_{\text{BSM}}^2 \cdot T
+    $$
+    
+    In the Heston model, variance is stochastic. But, using Fubini's theorem, we can compute the **expected total variance** over time $ T $ as:
+    
+    $$
+    \text{Var}_{\text{Heston}} = \mathbb{E}\left[ \int_0^T v_t dt \right] = \int_0^T \mathbb{E}[v_t] dt
+    $$
+    
+    ---
+    
+    ## Expected Variance in the Heston Model
+    
+    The variance process follows the Cox-Ingersoll-Ross (CIR) process:
+    
+    $$
+    dv_t = \kappa(\theta - v_t) dt + \sigma \sqrt{v_t} dW_t
+    $$
+    
+    Using the Itô-Doeblin formula with the function $ f(t,x) = e^{\kappa t} x $, we can show that:
+    
+    $$
+    \mathbb{E}[v_t] = v_0 e^{-\kappa t} + \theta (1 - e^{-\kappa t})
+    $$
+    
+    ---
+    
+    ## Total Expected Variance
+    
+    Now integrate this over $ [0, T] $:
+    
+    $$
+    \int_0^T \mathbb{E}[v_t] dt = \int_0^T \left( v_0 e^{-\kappa t} + \theta (1 - e^{-\kappa t}) \right) dt
+    = v_0 \int_0^T e^{-\kappa t} dt + \theta \int_0^T (1 - e^{-\kappa t}) dt
+    $$
+    
+    We derive:
+    
+    $$
+    \int_0^T \mathbb{E}[v_t] dt = v_0 \cdot \frac{1 - e^{-\kappa T}}{\kappa} + \theta \left( T - \frac{1 - e^{-\kappa T}}{\kappa} \right)
+    $$
+    
+    $$
+    = \frac{1 - e^{-\kappa T}}{\kappa} (v_0 - \theta) + \theta T
+    $$
+    
+    ---
+    
+    ## BSM Matching Volatility
+    
+    Equating this to $ \sigma_{\text{BSM}}^2 T $, we get:
+    
+    $$
+    \sigma_{\text{BSM}}^2 T = \frac{1 - e^{-\kappa T}}{\kappa} (v_0 - \theta) + \theta T
+    $$
+    
+    Divide both sides by $ T $:
+    
+    $$
+    \sigma_{\text{BSM}}^2 = \frac{1}{T} \left[ \theta T + \frac{1 - e^{-\kappa T}}{\kappa} (v_0 - \theta) \right]
+    $$
+    
+    $$
+    = \theta + \frac{(v_0 - \theta)}{\kappa T} (1 - e^{-\kappa T})
+    $$
+    
+    ---
+    
+    Hence, the **Black-Scholes volatility** that matches the **average variance** of the Heston process over time $ T $ is
+
+    $$
+    \boxed{
+    \sigma_{\text{BSM}} = \sqrt{ \theta + \frac{(v_0 - \theta)}{\kappa T} (1 - e^{-\kappa T}) }
+    }
+    $$
+    """)
+
+st.subheader("Choose option type")
+call_option = st.checkbox("Call Option", value=True)
+put_option = st.checkbox("Put Option", value=False)
+
+PAR_CHOICES = {
+    "κ (kappa)": "kappa",
+    "θ (theta)": "theta",
+    "σ (sigma)": "sigma",
+    "ρ (rho)": "rho",
+    "v₀ (v0)": "v0",
+}
+x_label_2 = st.selectbox("Choose Parameter", list(PAR_CHOICES.keys()))
+x_var_2 = PAR_CHOICES[x_label_2]
+
+st.markdown("### Specify the different values of the parameter")
+# Select how many parameter values to compare
+num_values = st.selectbox("How many values do you want to compare?", [1, 2, 3], index=1)
+
+# Get bounds for the selected parameter
+param_min, param_max, _, param_step = SLIDER_PARAMS[x_var_2]
+
+param_values = []
+for i in range(num_values):
+    val = st.number_input(
+        f"Value {i+1} for {x_label_2}",
+        min_value=param_min,
+        max_value=param_max,
+        value=np.clip(current_values[x_var_2] * (1 + 0.5 * (i - 1)), param_min, param_max), # creates spaced values around the center (30%)
+        step=param_step,
+        format="%.3f",
+        key=f"param_val_{i}_{x_var_2}"
+    )
+    param_values.append(val)
+
+plot_difference = st.button("Generate Plot", key="diff_plot_button")
+
+if plot_difference:
+    try:
+        # Only plot for selected option types
+        for opt_type in (["call"] if call_option and not put_option else
+                        ["put"] if put_option and not call_option else
+                         ["call", "put"]):
+            fig = plot_Heston_vs_BSM(
+                heston_pricer_func=price_option,  # your Heston pricer function
+                s0=s0,
+                strike=K,
+                T=T,
+                r=params["r"],
+                kappa=params["kappa"],
+                theta=params["theta"],
+                sigma=params["sigma"],
+                rho=params["rho"],
+                v0=params["v0"],
+                param_name=x_var_2,
+                param_values=param_values,
+                option_type=opt_type
+            )
+            st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Failed to generate price difference plot: {e}")
+
+
+
+# --- Main: Plot Asset Price and Volatility ---
 
 st.header("Heston Model Simulation")
 
@@ -694,7 +861,8 @@ st.markdown(
         """
         <div style="background-color:#025E73; padding:15px; border-radius:10px; margin-top:-10px;">
             <p style="font-size:18px; margin:0; color:#011F26;">
-                Simulate the asset price and its volatility as defined in the Heston model.
+                Simulate the asset prices and their volatility as defined in the Heston model. 
+                You can also study how the log-returns distribution varies for different values.
             </p>
         </div>
         """,
@@ -703,8 +871,25 @@ st.markdown(
 st.markdown(" ")
 
 # User inputs for simulation
+st.subheader("Plots to Show")
+plot_prices = st.checkbox("Asset Prices", value=True)
+plot_vol = st.checkbox("Volatility", value=True)
+plot_returns = st.checkbox("Log-Returns", value=False)
+plot_dist = st.checkbox("Distribution of Daily Log-Returns", value=False)
+plot_dist_comp = st.checkbox("Distribution of Compounded Log-Returns", value=False)
+
+
+# Nested checkbox for KDE only if distribution is selected
+if plot_dist or plot_dist_comp:
+    _, plot_kde = st.columns([0.2, 9.8])
+    with plot_kde:
+        plot_kde = st.checkbox("Overlay Kernel Density Estimate (KDE)", value=True)
+else:
+    plot_kde = False
+
+
 n_steps = st.number_input("Number of time steps (252 days in 1 trading year)", min_value=10, max_value=5000, value=252, step=10)
-n_sims = st.number_input("Number of simulation paths", min_value=1, max_value=50000, value=10, step=1)
+n_sims = st.number_input("Number of simulation paths", min_value=1, max_value=100000, value=10, step=1)
 
 show_subset = st.selectbox(
     "Select Subset of Paths to Display",
@@ -713,12 +898,12 @@ show_subset = st.selectbox(
 
 show_mean = st.checkbox("Show Mean Only")
 show_range = st.checkbox("Show Min-Max Range")
-plot_returns = st.checkbox("Plot Returns")
+
 run_sim = st.button("Run Simulation")
 
 if run_sim:
     try:
-        S_sim, v_sim = HestonModelSim(
+        S_sim, var_sim = HestonModelSim(
             s0=s0,
             T=T,
             r=params["r"],
@@ -731,8 +916,23 @@ if run_sim:
             M=n_sims
         )
 
-        fig_sim = PlotHestonModel(S_sim, v_sim, T, show_subset, show_mean, show_range, plot_returns)
-        st.pyplot(fig_sim)
+        figs = PlotHestonModel(S_sim, var_sim, T, show_subset, show_mean, show_range, plot_prices, plot_vol, plot_returns, plot_dist, plot_dist_comp, plot_kde)
+
+        if 'prices' in figs:
+            st.pyplot(figs['prices'])
+
+        if 'volatility' in figs:
+            st.pyplot(figs['volatility'])
+
+        if 'returns' in figs:
+            st.pyplot(figs['returns'])
+
+        if 'return_dist' in figs:
+            st.pyplot(figs['return_dist'])
+
+        if 'comp_return_dist' in figs:
+            st.pyplot(figs['comp_return_dist'])
 
     except Exception as e:
         st.error(f"Simulation failed: {e}")
+
