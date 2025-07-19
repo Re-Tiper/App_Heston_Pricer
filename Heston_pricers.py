@@ -152,9 +152,11 @@ def HestonQuad(s0, strike, T, r, kappa, theta, sigma, rho, v0, option_type="call
     else:
         raise ValueError("option_type must be 'call' or 'put'")
 
+
 """
 Pricer for american option
 """
+
 from Heston_sim import HestonModelSim
 #from numpy.polynomial.laguerre import lagval
 
