@@ -1,3 +1,3 @@
-# App_Heston_Pricer
+# Heston Pricer App
 ---
-https://heston-pricer.streamlit.app
+Check it out at: https://heston-pricer.streamlit.app
