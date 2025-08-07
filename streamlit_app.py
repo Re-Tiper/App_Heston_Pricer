@@ -7,6 +7,11 @@ from Heston_sim import HestonModelSim, PlotHestonModel
 from BS_vs_Heston import plot_Heston_vs_BSM
 
 
+# To run locally:
+# conda activate Stochastics
+# streamlit run "/Users/themis/Programming/Python/Heston App/app.py"
+
+
 # Inject custom CSS for buttons
 st.markdown("""
     <style>
@@ -404,7 +409,9 @@ st.sidebar.caption(
     "**Note:** To recover the Black-Scholes model, set:\n"
     "- σ = 0  (no volatility of volatility)\n"
     "- θ = v₀  (in order to achieve constant variance)\n"
-    "- κ and ρ can be any values"
+    "- κ and ρ can be any values\n\n"
+    "Keep in mind that both pricing methods for European options do not work when σ = 0 since "
+    "then variance becomes deterministic and the assumptions of the Heston model do not hold."
 )
 
 params = {
@@ -421,7 +428,7 @@ params = {
         "ρ (correlation)", min_value=-0.99999, max_value=0.99999, value=0.5, step=0.01
     ),
     "v0": st.sidebar.slider(
-        "v₀ (initial variance)", min_value=1e-5, max_value=0.4, value=0.02, step=0.01
+        "v₀ (initial variance)", min_value=0.0, max_value=0.4, value=0.02, step=0.01
     ),
     "r": st.sidebar.slider(
         "r (risk-free rate)", min_value=0.0, max_value=0.2, value=0.03, step=0.01
@@ -434,8 +441,8 @@ SLIDER_PARAMS = {
     "kappa": (1e-5, 5.0, 0.01, 2.0),
     "theta": (1e-5, 0.1, 0.01, 0.04),
     "sigma": (1e-5, 1.0, 0.01, 0.3),
-    "rho": (-0.999, 0.999, 0.01, -0.5),
-    "v0": (1e-5, 0.1, 0.01, 0.04),
+    "rho": (-0.99999, 0.99999, 0.01, -0.5),
+    "v0": (0.0, 0.1, 0.01, 0.04),
     "r": (0.0, 0.1, 0.01, 0.03),
 }
 
@@ -862,7 +869,7 @@ st.markdown(
         <div style="background-color:#025E73; padding:15px; border-radius:10px; margin-top:-10px;">
             <p style="font-size:18px; margin:0; color:#011F26;">
                 Simulate the asset prices and their volatility as defined in the Heston model. 
-                You can also study how the log-returns distribution varies for different values.
+                You can also study how the daily and terminal log-returns distribution varies for different values.
             </p>
         </div>
         """,
